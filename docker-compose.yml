@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    stdin_open: true
+    tty: true
+    ports:
+      - "8000:8000" # Expose le port 8000 pour FastAPI
+    depends_on:
+      - db # Assure que le service PostgreSQL démarre avant l'application
+    environment:
+      - DATABASE_URL=postgresql+psycopg://lab2user:password@db/lab2db
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: lab2user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: lab2db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5433" # Expose le port 5432 pour PostgreSQL
+
+volumes:
+  postgres_data:
