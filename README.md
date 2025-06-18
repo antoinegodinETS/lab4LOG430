@@ -1,113 +1,100 @@
 # Système Multi-Magasins - Gestion de Caisse (FastAPI / PostgreSQL)
 
-Une application web Python modulaire pour gérer les stocks, ventes et approvisionnements de plusieurs magasins. Basée sur **FastAPI**, elle expose des API RESTful et propose une interface web pour la maison mère et les magasins. Persistance des données via **PostgreSQL**.
-
----
+Une application web Python modulaire pour gérer les stocks, ventes et approvisionnements de plusieurs magasins.  
+Basée sur **FastAPI**, elle expose des API RESTful et propose une interface web pour la maison mère et les magasins.  
+Persistance des données via **PostgreSQL**.
 
 ## 🚀 Démarrage rapide
 
-### **1. Installer les dépendances :**
+### 1. Installer les dépendances :
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-cd source
+cd src
 ```
 
-## 2. Initialiser la base de données
-
+### 2. Initialiser la base de données
 Les scripts `init_data.py` et `populate_ventes.py` sont automatiquement exécutés au lancement.  
 **Pas besoin de lancer manuellement l'initialisation.**
 
----
-
-## 3. Lancer l’API principale (routes REST)
-
+### 3. Lancer les services avec Docker Compose
 ```bash
-uvicorn main:app --port 8003 --reload
+docker-compose up --build
 ```
 
-## 4. Lancer l’interface web (FastAPI + Jinja2)
-
-```bash
-uvicorn interface:app --port 8004 --reload
-```
-
-## 5. Accéder à l’application
-
-- **Interface Web** : [http://127.0.0.1:8004](http://127.0.0.1:8004)
-- **Swagger UI (API)** : [http://127.0.0.1:8003/docs](http://127.0.0.1:8003/docs)
-- **ReDoc (alternative Swagger)** : [http://127.0.0.1:8003/redoc](http://127.0.0.1:8003/redoc)
-
----
+- Interface accessible via **http://localhost:8088/123**
+- API principale : **http://localhost:8003/docs**
 
 ## 🧱 Structure du projet
 
-```bash
-├── .github/
-│   └── workflows/               # CI/CD avec GitHub Actions
-├── docs/                        # Documentation (ADR, UML, besoins)
+```
+├── .github/workflows/             # CI/CD avec GitHub Actions
 ├── src/
-│   ├── api/                     # Routes FastAPI (maison_mere, magasin, logistique)
-│   ├── interface.py             # Interface HTML + Jinja2
-│   ├── main.py                  # Point d’entrée principal de l’API REST
-│   ├── common/                  # Initialisation, configuration et modèles partagés
-│   ├── maison_mere/             # Logique maison mère
-│   ├── logistique/              # Logique du centre logistique
-│   ├── magasin/                 # Logique des magasins
-│   ├── database.py              # Configuration SQLAlchemy
-│   ├── init_data.py             # Script d’initialisation des données
-│   └── populate_ventes.py       # Génération de données de vente (démo)
-├── templates/                   # Fichiers HTML (interface utilisateur)
-├── static/                      # Fichiers CSS, JS, images
-├── tests/                       
+│   ├── api/                       # Routes FastAPI (REST)
+│   ├── interface.py               # Interface web (Jinja2)
+│   ├── main.py                    # API centrale
+│   ├── magasin/                   # Logique des magasins
+│   ├── logistique/                # Logique du centre logistique
+│   ├── maison_mere/               # Logique de la maison mère
+│   ├── common/                    # Modèles et configuration BD
+│   ├── init_data.py               # Init BD
+│   └── populate_ventes.py         # Génération de ventes de test
+├── templates/                     # HTML Jinja2
+├── static/                        # CSS, JS
 ├── docker-compose.yml
 ├── Dockerfile
+├── prometheus.yml                 # Config Prometheus
 ├── requirements.txt
-├── README.md
+└── README.md
 ```
+
 ## ✅ Fonctionnalités principales
 
-- 🏪 Gestion multi-magasins  
-- 📦 Suivi des stocks  
-- 🛒 Ventes de produits  
-- 🔁 Demandes d’approvisionnement avec validation  
-- 📊 Tableau de bord centralisé (maison mère)  
-- 🔐 Séparation des responsabilités : magasin / logistique / maison mère  
-- 🧪 Initialisation automatisée des données (dev/démo)  
-- 📚 Documentation Swagger intégrée  
+- 🏬 Gestion de plusieurs magasins
+- 📦 Suivi des stocks (magasin + centre logistique)
+- 🔁 Demandes d’approvisionnement avec validation
+- 💰 Ventes de produits (avec vérification de stock)
+- 📊 Tableau de bord centralisé (performances, rapport)
+- 🔍 Visualisation via Prometheus + Grafana
+- ⚖️ Répartition de charge avec Nginx
+- 🧪 Stress test via `ab` ou `hey`
 
----
+## 📊 Observabilité
+
+- **Prometheus** (http://localhost:9091)
+- **Grafana** (http://localhost:3000, login: `admin` / `admin`)
+- **Dashboards** : monitoring d’instances `interface1`, `interface2`, `api`
 
 ## ⚙️ CI/CD
 
-Le projet utilise **GitHub Actions** pour automatiser les étapes suivantes :
+Le projet utilise **GitHub Actions** pour :
+- Linting avec Flake8
+- Exécution des tests
+- Build Docker
 
-- Installation des dépendances  
-- Exécution des tests unitaires  
-- Initialisation de la base de données  
-- Build de l’image Docker  
-
-> **Fichier CI/CD** : `.github/workflows/python-app.yml`
-
----
+> Workflow : `.github/workflows/python-app.yml`
 
 ## 🔧 Choix techniques
 
-| Technologie     | Rôle                                 |
-|----------------|--------------------------------------|
-| Python 3.12     | Langage principal                    |
-| FastAPI         | Framework web (API REST & Jinja2)   |
-| SQLAlchemy      | ORM pour PostgreSQL                 |
+| Technologie     | Rôle                                |
+|----------------|-------------------------------------|
+| Python 3.12     | Langage principal                   |
+| FastAPI         | API REST + Interface HTML           |
+| SQLAlchemy      | ORM (accès PostgreSQL)              |
 | PostgreSQL      | Base de données relationnelle       |
-| Jinja2          | Rendu HTML côté serveur             |
-| httpx           | Appels HTTP entre modules internes  |
 | Docker          | Conteneurisation                    |
+| Grafana         | Visualisation                       |
+| Prometheus      | Monitoring                          |
+| Nginx           | Répartition de charge               |
 | GitHub Actions  | Intégration continue                |
 
----
+## 🧪 Test de charge
+
+```bash
+ab -n 1000 -c 20 http://localhost:8088/123/
+```
 
 ## 📝 Licence
 
-Ce projet est distribué sous licence **MIT**.  
-Voir le fichier [LICENSE](LICENSE) pour plus d'informations.
+Ce projet est sous licence **MIT**.

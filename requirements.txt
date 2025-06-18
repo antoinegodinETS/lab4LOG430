@@ -8,3 +8,6 @@ fastapi
 jinja2
 python-multipart
 httpx
+prometheus_fastapi_instrumentator
+loguru
+locust

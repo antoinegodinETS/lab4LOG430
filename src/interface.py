@@ -4,16 +4,27 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import joinedload
 import httpx
+from prometheus_fastapi_instrumentator import Instrumentator
+
 
 from magasin.models import Produit
 from logistique.models import DemandeApprovisionnement
 from common.database import SessionLocal
 
 app = FastAPI()
+instrumentator = Instrumentator().instrument(app).expose(app)
 templates = Jinja2Templates(directory="templates")
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 
 API_BASE = "http://localhost:8003/api/v1"
+
+@app.get("/produits")
+def get_produits():
+    db = SessionLocal()
+    produits = db.query(Produit).all()
+    db.close()
+    return {"produits": [ {"id": p.id, "nom": p.nom, "prix": p.prix} for p in produits ]}
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):

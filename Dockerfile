@@ -14,6 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ src/
 COPY .flake8 .flake8  
 
+# Ajoute le chemin source au PYTHONPATH pour que les imports fonctionnent
+ENV PYTHONPATH=/app/src
+
 # Expose le port pour FastAPI
 EXPOSE 8003  
 EXPOSE 8004  

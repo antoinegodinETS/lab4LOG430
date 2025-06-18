@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'fastapi-interface'
+    static_configs:
+      - targets:
+          - 'interface1:8000'
+          - 'interface2:8000'
