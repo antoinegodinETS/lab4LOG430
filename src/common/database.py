@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, text
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import MetaData
 
@@ -22,3 +22,11 @@ def init_db():
 
     # Crée les tables dans le schéma
     Base.metadata.create_all(bind=engine)
+    
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+

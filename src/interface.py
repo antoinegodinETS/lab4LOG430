@@ -2,53 +2,52 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import joinedload
+import httpx
 
-from magasin.services import (
-    consulter_stock_magasin, performances_magasin, generer_performances_magasin, vendre_produit
-)
-from logistique.services import (
-    consulter_stock_logistique, creer_demande_approvisionnement,
-    approvisionner_magasin
-)
-
-
-
-
-from maison_mere.services import generer_rapport_ventes
 from magasin.models import Produit
 from logistique.models import DemandeApprovisionnement
 from common.database import SessionLocal
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# app.mount("/static", StaticFiles(directory="static"), name="static")
+
+API_BASE = "http://localhost:8003/api/v1"
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     db = SessionLocal()
-    stock = consulter_stock_logistique()
-    demandes = db.query(DemandeApprovisionnement).filter_by(statut="en_attente").all()
+    demandes = db.query(DemandeApprovisionnement).options(
+        joinedload(DemandeApprovisionnement.magasin),
+        joinedload(DemandeApprovisionnement.produit)
+    ).filter_by(statut="en_attente").all()
     db.close()
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{API_BASE}/logistique/stock")
+        stock = resp.json()
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "stock": stock,
         "demandes": demandes,
-        "result": None   # 👈 ajoute ceci
+        "result": None
     })
 
-
-
 @app.get("/rapport", response_class=HTMLResponse)
-def afficher_rapport(request: Request):
-    data = generer_rapport_ventes()
+async def afficher_rapport(request: Request):
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{API_BASE}/maison-mere/rapport")
+        data = resp.json()
     return templates.TemplateResponse("rapport.html", {"request": request, "data": data})
 
-
 @app.get("/performances", response_class=HTMLResponse)
-def afficher_performances(request: Request):
-    data = generer_performances_magasin()
+async def afficher_performances(request: Request):
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{API_BASE}/maison-mere/performances")
+        data = resp.json()
     return templates.TemplateResponse("performances.html", {"request": request, "result": data})
-
 
 @app.get("/maj_produit", response_class=HTMLResponse)
 def afficher_formulaire_maj(request: Request):
@@ -56,7 +55,6 @@ def afficher_formulaire_maj(request: Request):
     produits = db.query(Produit).all()
     db.close()
     return templates.TemplateResponse("maj_produit.html", {"request": request, "produits": produits})
-
 
 @app.post("/maj_produit", response_class=HTMLResponse)
 def mettre_a_jour_produit(request: Request, produit_id: int = Form(...), nom: str = Form(...), prix: float = Form(...), description: str = Form(...)):
@@ -76,7 +74,6 @@ def mettre_a_jour_produit(request: Request, produit_id: int = Form(...), nom: st
         "produits": produits
     })
 
-
 @app.get("/demande_appro", response_class=HTMLResponse)
 def afficher_demandes(request: Request):
     db = SessionLocal()
@@ -84,21 +81,39 @@ def afficher_demandes(request: Request):
     db.close()
     return templates.TemplateResponse("index.html", {"request": request, "demandes": demandes})
 
-
 @app.post("/valider_demande", response_class=HTMLResponse)
-def valider_demande(request: Request, demande_id: int = Form(...)):
+async def valider_demande(request: Request, demande_id: int = Form(...)):
     db = SessionLocal()
-    demande = db.query(DemandeApprovisionnement).get(demande_id)
+    
+    # Charger les relations pour la demande validée
+    demande = db.query(DemandeApprovisionnement)\
+        .options(joinedload(DemandeApprovisionnement.magasin),
+                 joinedload(DemandeApprovisionnement.produit))\
+        .filter(DemandeApprovisionnement.id == demande_id)\
+        .first()
 
     if demande:
-        approvisionner_magasin(demande.produit_id, demande.quantite, demande.magasin_id)
+        async with httpx.AsyncClient() as client:
+            await client.post(f"{API_BASE}/logistique/approvisionner", params={
+                "produit_id": demande.produit_id,
+                "quantite": demande.quantite,
+                "magasin_id": demande.magasin_id
+            })
         demande.statut = "validee"
         db.commit()
 
-    # Recharger les données mises à jour
-    stock = consulter_stock_logistique()
-    demandes = db.query(DemandeApprovisionnement).filter_by(statut="en_attente").all()
-    db.close()
+    # Charger TOUTES les demandes avec les relations (important !)
+    demandes = db.query(DemandeApprovisionnement)\
+        .filter_by(statut="en_attente")\
+        .options(joinedload(DemandeApprovisionnement.magasin),
+                 joinedload(DemandeApprovisionnement.produit))\
+        .all()
+
+    # Récupérer le stock avant de fermer la session
+    async with httpx.AsyncClient() as client:
+        stock = (await client.get(f"{API_BASE}/logistique/stock")).json()
+
+    db.close()  # ✅ fermer la session après que tout est chargé
 
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -108,7 +123,6 @@ def valider_demande(request: Request, demande_id: int = Form(...)):
     })
 
 
-
 @app.post("/execute", response_class=HTMLResponse)
 async def execute_action(request: Request):
     db = SessionLocal()
@@ -116,48 +130,56 @@ async def execute_action(request: Request):
     action = form_data.get("action")
     section = form_data.get("section", None)
     demandes = db.query(DemandeApprovisionnement).filter_by(statut="en_attente").all()
-
-
     result = None
     stock_magasin = None
 
     try:
-        if action == "rapport":
-            return RedirectResponse(url="/rapport", status_code=303)
+        async with httpx.AsyncClient(base_url=API_BASE) as client:
+            if action == "rapport":
+                return RedirectResponse(url="/rapport", status_code=303)
 
-        elif action == "performances":
-            result = performances_magasin()
+            elif action == "performances":
+                resp = await client.get("/maison-mere/performances")
+                result = resp.json()
 
-        elif action == "reapprovisionnement":
-            produit_id = int(form_data.get("produit_id"))
-            quantite = int(form_data.get("quantite"))
-            magasin_id = int(form_data.get("magasin_id"))
-            creer_demande_approvisionnement(magasin_id, produit_id, quantite)
-            return RedirectResponse(url="/", status_code=303)
+            elif action == "reapprovisionnement":
+                await client.post("/logistique/demande", params={
+                    "magasin_id": int(form_data.get("magasin_id")),
+                    "produit_id": int(form_data.get("produit_id")),
+                    "quantite": int(form_data.get("quantite"))
+                })
+                return RedirectResponse(url="/", status_code=303)
 
-        elif action == "approvisionner":
-            produit_id = int(form_data.get("produit_id"))
-            quantite = int(form_data.get("quantite"))
-            result = approvisionner_magasin(produit_id, quantite)
+            elif action == "approvisionner":
+                resp = await client.post("/logistique/approvisionner", params={
+                    "produit_id": int(form_data.get("produit_id")),
+                    "quantite": int(form_data.get("quantite")),
+                    "magasin_id": int(form_data.get("magasin_id"))
+                })
+                result = resp.text
 
-        elif action == "consulter_stock_magasin":
-            magasin_id = int(form_data.get("magasin_id"))
-            stock_magasin = consulter_stock_magasin(magasin_id)
-        
-        elif action == "vendre_produit":
-            produit_id = int(form_data.get("produit_id"))
-            quantite = int(form_data.get("quantite"))
-            magasin_id = int(form_data.get("magasin_id"))
-            result = vendre_produit(magasin_id, produit_id, quantite)
+            elif action == "consulter_stock_magasin":
+                magasin_id = int(form_data.get("magasin_id"))
+                resp = await client.get(f"/magasins/{magasin_id}/stock")
+                stock_magasin = resp.json()
 
+            elif action == "vendre_produit":
+                await client.post("/magasins/vente", params={
+                    "magasin_id": int(form_data.get("magasin_id")),
+                    "produit_id": int(form_data.get("produit_id")),
+                    "quantite": int(form_data.get("quantite"))
+                })
+                result = "Produit vendu avec succès"
 
-        else:
-            result = "Action non reconnue."
+            else:
+                result = "Action non reconnue."
 
     except Exception as e:
         result = f"Erreur : {str(e)}"
 
-    stock = consulter_stock_logistique()
+    async with httpx.AsyncClient() as client:
+        stock = (await client.get(f"{API_BASE}/logistique/stock")).json()
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "result": result,

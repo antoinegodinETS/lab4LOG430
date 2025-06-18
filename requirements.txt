@@ -4,3 +4,7 @@ pytest
 flake8
 psycopg[c]
 uvicorn
+fastapi
+jinja2
+python-multipart
+httpx

@@ -76,9 +76,11 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Build and push Docker images
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/log430-lab2:${{ secrets.DOCKER_USERNAME }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/log430-lab3-api:${{ secrets.DOCKER_USERNAME }}
+            ${{ secrets.DOCKER_USERNAME }}/log430-lab3-interface:${{ secrets.DOCKER_USERNAME }}

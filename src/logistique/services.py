@@ -85,9 +85,10 @@ def consulter_stock_logistique():
     return stock_info
 
 
+
 def recuperer_demandes_en_attente():
     db = SessionLocal()
-    demandes = db.query(DemandeApprovisionnement).filter_by(validee=False).all()
+    demandes = db.query(DemandeApprovisionnement).filter_by(statut="en_attente").all()
     for demande in demandes:
         _ = demande.produit.nom  # force lazy-loading pour le template
         _ = demande.magasin.nom

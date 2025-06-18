@@ -1,3 +1,4 @@
+from http.client import HTTPException
 from common.database import SessionLocal
 from magasin.models import Produit, StockMagasin
 from maison_mere.models import Vente
@@ -54,35 +55,38 @@ def consulter_stock_magasin(magasin_id: int):
     ]
     return stock_info
 
-def vendre_produit(magasin_id: int, produit_id: int, quantite: int) -> str:
+def vendre_produit(magasin_id: int, produit_id: int, quantite: int):
     db = SessionLocal()
-    
     try:
         stock = db.query(StockMagasin).filter_by(
             magasin_id=magasin_id,
             produit_id=produit_id
         ).first()
-        
-        for s in stock:
-            print(s.produit_id, s.quantite)
 
         if stock is None:
-            return f"Erreur : Le produit {produit_id} n'existe pas dans le stock du magasin {magasin_id}."
+            raise HTTPException(status_code=404, detail=f"Produit {produit_id} introuvable dans le magasin {magasin_id}.")
 
         if quantite <= 0:
-            return "Erreur : La quantité doit être positive."
+            raise HTTPException(status_code=400, detail="Quantité invalide.")
 
         if stock.quantite < quantite:
-            return f"Erreur : Stock insuffisant. Disponible : {stock.quantite}, demandé : {quantite}."
+            raise HTTPException(status_code=400, detail=f"Stock insuffisant. Disponible: {stock.quantite}, demandé: {quantite}.")
 
-        # Mise à jour du stock
         stock.quantite -= quantite
         db.commit()
-        return f"✅ Vente réussie de {quantite} unité(s) du produit {produit_id} par le magasin {magasin_id}."
 
+        return {
+            "message": f"✅ Vente réussie de {quantite} unité(s) du produit {produit_id}.",
+            "magasin_id": magasin_id,
+            "produit_id": produit_id,
+            "quantite_restante": stock.quantite
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
-        return f"Erreur inattendue : {str(e)}"
-
+        raise HTTPException(status_code=500, detail=f"Erreur inattendue : {str(e)}")
     finally:
         db.close()
+

@@ -15,7 +15,8 @@ COPY src/ src/
 COPY .flake8 .flake8  
 
 # Expose le port pour FastAPI
-EXPOSE 8000
+EXPOSE 8003  
+EXPOSE 8004  
 
 # Par défaut, lance le serveur FastAPI avec Uvicorn
-CMD ["uvicorn", "src.interface:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]

@@ -54,7 +54,7 @@ def generer_performances():
 
     # Chiffre d'affaires par magasin
     chiffre_affaires = (
-        session.query(Vente.magasin_id, func.sum(Vente.prix_unitaire * Vente.quantite).label("total"))
+        session.query(Vente.magasin_id, func.sum(Vente.montant * Vente.quantite).label("total"))
         .group_by(Vente.magasin_id)
         .all()
     )
