@@ -82,5 +82,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/log430-lab3-api:${{ secrets.DOCKER_USERNAME }}
-            ${{ secrets.DOCKER_USERNAME }}/log430-lab3-interface:${{ secrets.DOCKER_USERNAME }}
+            ${{ secrets.DOCKER_USERNAME }}/log430-lab4-api:${{ secrets.DOCKER_USERNAME }}
+            ${{ secrets.DOCKER_USERNAME }}/log430-lab4-interface:${{ secrets.DOCKER_USERNAME }}
