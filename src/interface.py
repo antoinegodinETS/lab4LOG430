@@ -23,7 +23,7 @@ def get_produits():
     db = SessionLocal()
     produits = db.query(Produit).all()
     db.close()
-    return {"produits": [ {"id": p.id, "nom": p.nom, "prix": p.prix} for p in produits ]}
+    return {"produits": [{"id": p.id, "nom": p.nom, "prix": p.prix} for p in produits]}
 
 
 @app.get("/", response_class=HTMLResponse)
