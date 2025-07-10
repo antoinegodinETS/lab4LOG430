@@ -10,6 +10,7 @@ from magasin.models import Magasin, Produit, StockMagasin
 from maison_mere.models import Vente
 from logistique.models import DemandeApprovisionnement, StockLogistique
 
+
 client = TestClient(app)
 
 @pytest.fixture(scope="function")

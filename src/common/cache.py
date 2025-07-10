@@ -1,13 +1,10 @@
-import aioredis
+import redis.asyncio as redis
 import json
 
 class RedisCache:
-    def __init__(self, redis_url: str = "redis://localhost:6379"):
+    def __init__(self, redis_url: str = "redis://redis:6379"):  # Utilisez "redis" comme hôte
         self.redis_url = redis_url
-        self.redis = None
-
-    async def connect(self):
-        self.redis = await aioredis.from_url(self.redis_url)
+        self.redis = redis.Redis.from_url(self.redis_url)
 
     async def get(self, key: str):
         value = await self.redis.get(key)
