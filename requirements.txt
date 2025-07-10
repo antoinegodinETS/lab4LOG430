@@ -11,3 +11,4 @@ httpx
 prometheus_fastapi_instrumentator
 loguru
 locust
+aioredis
